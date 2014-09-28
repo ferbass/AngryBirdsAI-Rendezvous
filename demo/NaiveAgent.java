@@ -115,7 +115,23 @@ public class NaiveAgent implements Runnable {
 				.sqrt((double) ((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y)
 						* (p1.y - p2.y)));
 	}
+	private List<String> blocksDescription(Vision vision){
+		List<String> desc = new ArrayList<String>();
+        String res="";
+		List<ABObject> blocks = vision.findBlocksRealShape();
+ 		ABObject block=null;
 
+ 		if(!blocks.isEmpty()){
+ 			for(int j=1;j<blocks.size();j++){
+ 				block = blocks.get(j);
+                res = "Block Number: "+block.id+",Block Shape: "+block.shape.toString()+",Block Material: "+block.getType().toString();
+ 				System.out.println("Block Number:"+block.id+",Block Shape:"+block.shape.toString()+",Block Material:"+block.getType().toString());
+ 			    desc.add(res);
+            }
+ 		}
+        return desc;
+	}
+	
 	public GameState solve()
 	{
 
@@ -139,7 +155,9 @@ public class NaiveAgent implements Runnable {
 		}
         // get all the pigs
  		List<ABObject> pigs = vision.findPigsMBR();
-
+ 		
+ 		blocksDescription(vision);
+ 		
 		GameState state = aRobot.getState();
 
 		// if there is a sling, then play, otherwise just skip.

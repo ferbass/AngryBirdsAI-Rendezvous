@@ -272,11 +272,7 @@ public class NaiveAgent implements Runnable {
                             btype = block.getType().toString();
                             if(block.getCenterX()<resBlock.getCenterX()){
                                 distPig = distance(block.getCenter(), resBlock.getCenter());
-                                if(distPig<=min && block.getCenterY()>resBlock.getCenterY()){
-                                    min = distPig;
-                                    tBlock = block;
-                                }
-                                else if(tBlock==null && distPig<=min){
+                                if(distPig<=min){
                                     min = distPig;
                                     tBlock = block;
                                 }
@@ -305,11 +301,7 @@ public class NaiveAgent implements Runnable {
                             btype = block.getType().toString();
                             if(block.getCenterX()<lBlock.getCenterX() && blockOrient(block) && ((lBlock.getCenterX()-block.getCenterX()) < 25)){
                                 distPig = distance(new Point((int)block.getCenterX(),(int)(block.getCenterY()-block.getHeight()/2)), lBlock.getCenter());
-                                if(distPig<=min && block.getCenterY()>lBlock.getCenterY()){
-                                    min = distPig;
-                                    tBlock = block;
-                                }
-                                else if(tBlock==null && distPig<=min){
+                                if(distPig<=min){
                                     min = distPig;
                                     tBlock = block;
                                 }

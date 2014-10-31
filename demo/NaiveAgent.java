@@ -28,109 +28,117 @@ import ab.vision.Vision;
 
 public class NaiveAgent implements Runnable {
 
-	private ActionRobot aRobot;
-	private Random randomGenerator;
-	public int currentLevel = 1;
-	public static int time_limit = 12;
-	private Map<Integer,Integer> scores = new LinkedHashMap<Integer,Integer>();
-	TrajectoryPlanner tp;
-	private boolean firstShot;
-	private Point prevTarget;
-	// a standalone implementation of the Naive Agent
-	public NaiveAgent() {
-		
-		aRobot = new ActionRobot();
-		tp = new TrajectoryPlanner();
-		prevTarget = null;
-		firstShot = true;
-		randomGenerator = new Random();
-		// --- go to the Poached Eggs episode level selection page ---
-		ActionRobot.GoFromMainMenuToLevelSelection();
+    private ActionRobot aRobot;
+    private Random randomGenerator;
+    public int currentLevel = 1;
+    public static int time_limit = 12;
+    private Map<Integer,Integer> scores = new LinkedHashMap<Integer,Integer>();
+    TrajectoryPlanner tp;
+    private boolean firstShot;
+    private Point prevTarget;
+    // a standalone implementation of the Naive Agent
+    public NaiveAgent() {
+        
+        aRobot = new ActionRobot();
+        tp = new TrajectoryPlanner();
+        prevTarget = null;
+        firstShot = true;
+        randomGenerator = new Random();
+        // --- go to the Poached Eggs episode level selection page ---
+        ActionRobot.GoFromMainMenuToLevelSelection();
 
-	}
+    }
 
-	
-	// run the client
-	public void run() {
+    
+    // run the client
+    public void run() {
 
-		aRobot.loadLevel(currentLevel);
-		while (true) {
-			GameState state = solve();
-			if (state == GameState.WON) {
-				try {
-					Thread.sleep(3000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				int score = StateUtil.getScore(ActionRobot.proxy);
-				if(!scores.containsKey(currentLevel))
-					scores.put(currentLevel, score);
-				else
-				{
-					if(scores.get(currentLevel) < score)
-						scores.put(currentLevel, score);
-				}
-				int totalScore = 0;
-				for(Integer key: scores.keySet()){
+        aRobot.loadLevel(currentLevel);
+        while (true) {
+            GameState state = solve();
+            if (state == GameState.WON) {
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                int score = StateUtil.getScore(ActionRobot.proxy);
+                if(!scores.containsKey(currentLevel))
+                    scores.put(currentLevel, score);
+                else
+                {
+                    if(scores.get(currentLevel) < score)
+                        scores.put(currentLevel, score);
+                }
+                int totalScore = 0;
+                for(Integer key: scores.keySet()){
 
-					totalScore += scores.get(key);
-					System.out.println(" Level " + key
-							+ " Score: " + scores.get(key) + " ");
-				}
-				System.out.println("Total Score: " + totalScore);
-				aRobot.loadLevel(++currentLevel);
-				// make a new trajectory planner whenever a new level is entered
-				tp = new TrajectoryPlanner();
+                    totalScore += scores.get(key);
+                    System.out.println(" Level " + key
+                            + " Score: " + scores.get(key) + " ");
+                }
+                System.out.println("Total Score: " + totalScore);
+                aRobot.loadLevel(++currentLevel);
+                // make a new trajectory planner whenever a new level is entered
+                tp = new TrajectoryPlanner();
 
-				// first shot on this level, try high shot first
-				firstShot = true;
-			} else if (state == GameState.LOST) {
-				System.out.println("Restart");
-				aRobot.restartLevel();
-			} else if (state == GameState.LEVEL_SELECTION) {
-				System.out
-				.println("Unexpected level selection page, go to the last current level : "
-						+ currentLevel);
-				aRobot.loadLevel(currentLevel);
-			} else if (state == GameState.MAIN_MENU) {
-				System.out
-				.println("Unexpected main menu page, go to the last current level : "
-						+ currentLevel);
-				ActionRobot.GoFromMainMenuToLevelSelection();
-				aRobot.loadLevel(currentLevel);
-			} else if (state == GameState.EPISODE_MENU) {
-				System.out
-				.println("Unexpected episode menu page, go to the last current level : "
-						+ currentLevel);
-				ActionRobot.GoFromMainMenuToLevelSelection();
-				aRobot.loadLevel(currentLevel);
-			}
-
-		}
-
-	}
-
-	private double distance(Point p1, Point p2) {
-		return Math
-				.sqrt((double) ((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y)
-						* (p1.y - p2.y)));
-	}
-	private List<String> blocksDescription(Vision vision){
-		List<String> desc = new ArrayList<String>();
-        String res="";
-		List<ABObject> blocks = vision.findBlocksRealShape();
- 		ABObject block=null;
-
- 		if(!blocks.isEmpty()){
- 			for(int j=1;j<blocks.size();j++){
- 				block = blocks.get(j);
-                res = "Block Number: "+block.id+",Block Shape: "+block.shape.toString()+",Block Material: "+block.getType().toString();
- 				System.out.println("Block Number:"+block.id+",Block Shape:"+block.shape.toString()+",Block Material:"+block.getType().toString());
- 			    desc.add(res);
+                // first shot on this level, try high shot first
+                firstShot = true;
+            } else if (state == GameState.LOST) {
+                System.out.println("Restart");
+                aRobot.restartLevel();
+            } else if (state == GameState.LEVEL_SELECTION) {
+                System.out
+                .println("Unexpected level selection page, go to the last current level : "
+                        + currentLevel);
+                aRobot.loadLevel(currentLevel);
+            } else if (state == GameState.MAIN_MENU) {
+                System.out
+                .println("Unexpected main menu page, go to the last current level : "
+                        + currentLevel);
+                ActionRobot.GoFromMainMenuToLevelSelection();
+                aRobot.loadLevel(currentLevel);
+            } else if (state == GameState.EPISODE_MENU) {
+                System.out
+                .println("Unexpected episode menu page, go to the last current level : "
+                        + currentLevel);
+                ActionRobot.GoFromMainMenuToLevelSelection();
+                aRobot.loadLevel(currentLevel);
             }
- 		}
+
+        }
+
+    }
+
+    private double distance(Point p1, Point p2) {
+        return Math
+                .sqrt((double) ((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y)
+                        * (p1.y - p2.y)));
+    }
+    private List<String> blocksDescription(Vision vision){
+        List<String> desc = new ArrayList<String>();
+        String res="";
+        List<ABObject> blocks = vision.findBlocksRealShape();
+        ABObject block=null;
+
+        if(!blocks.isEmpty()){
+            for(int j=1;j<blocks.size();j++){
+                block = blocks.get(j);
+                res = "Block Number: "+block.id+",Block Shape: "+block.shape.toString()+",Block Material: "+block.getType().toString();
+                System.out.println("Block Number:"+block.id+",Block Shape:"+block.shape.toString()+",Block Material:"+block.getType().toString());
+                desc.add(res);
+            }
+        }
         return desc;
-	}
+    }
+
+    public boolean blockOrient(ABObject b)
+    {
+        if(b.getHeight()>b.getWidth())
+            return true;
+        else
+            return false;
+    }
 
     public GameState solve()
     {
@@ -167,58 +175,176 @@ public class NaiveAgent implements Runnable {
 
                 Point releasePoint = null;
                 Shot shot = new Shot();
+                Point resP = null;
                 int dx,dy;
                 {
                     // random pick up a pig
-                    ABObject resPig=pigs.get(0),pig = pigs.get(0);
                     Point refPoint = tp.getReferencePoint(sling);
 
-                    double min=pig.getCenterX(),miny=999999;
-                    for(int j=1;j<pigs.size();j++){
-                        pig = pigs.get(j);
-                        if(pig.getCenterX()<=min){
-                            if(pig.getCenterY()<miny){
-                                resPig = pig;
-                                min = pig.getCenterX();
-                                miny = pig.getCenterY();
-                            }
+                    //blocksDescription(vision);
+
+                    List<ABObject> blocks = vision.findBlocksRealShape();
+                    ABObject resBlock=null,targetBlock = null,resStone=null;
+
+
+                    for(int i=0;i<blocks.size();i++){
+                        if(blocks.get(i).shape.toString() == "Circle" && blocks.get(i).getType().toString()=="Stone"){
+                            resStone = blocks.get(i);
+                            resBlock = blocks.get(i);
+                            break;
                         }
                     }
-                    pig = resPig;
-                    //System.out.println(pig.toString());
-                    List<ABObject> blocks = vision.findBlocksRealShape();
-                    ABObject block=null,resBlock=pig;
+
+                    if(resBlock==null){
+                        ABObject resPig=pigs.get(0),pig = pigs.get(0);
+                        double maxDistance = 25;
+                        ABObject block=null;
+                        List<Integer> heuristic = new ArrayList();
+                        int resH;
+                        for(int i=0;i<pigs.size();i++){
+                            resH = 0;
+                            ABObject mpig=null;
+                            pig = pigs.get(i);
+                            blocks = vision.findBlocksRealShape();
+                            for(int j=0;j<blocks.size();j++){
+                                block = blocks.get(j);
+                                if(distance(block.getCenter(),pig.getCenter())<=maxDistance && block.getCenterX()<=pig.getCenterX()&&(block.getType().toString()=="Wood" || block.getType().toString() == "Ice")){
+                                    resH +=1;
+                                }
+                            }
+
+                            for(int j=0;j<pigs.size();j++){
+                                mpig = pigs.get(j);
+                                if(distance(mpig.getCenter(),pig.getCenter())<maxDistance && i!=j){
+                                    resH += 5;
+                                }
+                            }
+                            heuristic.add(resH);
+                        }
+                        double hmax=-1;
+                        int hindex=0;
+                        for(int i=0;i<heuristic.size();i++){
+                            if(heuristic.get(i)>hmax){
+                                hindex = i;
+                                hmax = heuristic.get(i);
+                            }
+                            else if(heuristic.get(i)==hmax){
+                                if(pigs.get(hindex).getCenterX()>pigs.get(i).getCenterX())
+                                    hindex=i;
+                            }
+                        }
+                        resBlock = pigs.get(hindex);
+                    }
+
+
+                    blocks = vision.findBlocksRealShape();
+                    ABObject block=null;
 
                     double distPig,tempd;
                     String btype;
+                    ABObject tempResBlock = resBlock;
 
-                    min = 9999999;
+                    double min = 9999999;
 
+                    //Finding the block on which resBlock lies = lBlock
+                    ABObject lBlock=null;
                     for(int j=0;j<blocks.size();j++){
-                        block = blocks.get(j);
-                        btype = block.getType().toString();
-                        if(btype=="Wood" || btype == "Ice"){
-                            distPig = distance(block.getCenter(),pig.getCenter());
-                            if(distPig<=min && block.getCenterY()<pig.getCenterY()){
-                                min = distPig;
-                                resBlock = block;
+                        block=blocks.get(j);
+                        if(block.intersects(resBlock.getCenterX(),resBlock.getCenterY(),resBlock.getWidth(),resBlock.getHeight()) && block.getCenterY()>resBlock.getCenterY()){
+                            if(lBlock==null)
+                                lBlock = block;
+                            else{
+                                if(block.getCenterX()<(lBlock.getCenterX()+lBlock.getWidth()/2))
+                                    lBlock = block;
                             }
                         }
                     }
 
+                    //System.out.println("Distance: "+distance(lBlock.getCenter(),resBlock.getCenter()));
+
+
+
+                    ABObject tBlock=null;
+                    if(lBlock == null){
+                        //Special Assignment of tBlock based on distance
+                        for(int j=0;j<blocks.size();j++){
+                            block = blocks.get(j);
+                            btype = block.getType().toString();
+                            if(block.getCenterX()<resBlock.getCenterX()){
+                                distPig = distance(block.getCenter(), resBlock.getCenter());
+                                if(distPig<=min && block.getCenterY()>resBlock.getCenterY()){
+                                    min = distPig;
+                                    tBlock = block;
+                                }
+                                else if(tBlock==null && distPig<=min){
+                                    min = distPig;
+                                    tBlock = block;
+                                }
+                            }
+                        }
+                    }
+
+                    //Find the block that touches lBlock and lies in left and is below lBlock ==> tBlock
+
+                    else{
+                        for(int j=0;j<blocks.size();j++){
+                            block=blocks.get(j);
+                            if(block.intersects(lBlock.getCenterX(),lBlock.getCenterY(),lBlock.getWidth(),lBlock.getHeight()) && blockOrient(block)&& block.getCenterX()<lBlock.getCenterX() &&block.getCenterY()>lBlock.getCenterY()){
+                                tBlock = block;
+                            }
+                            else if (tBlock==null && block.intersects(lBlock.getCenterX(),lBlock.getCenterY(),lBlock.getWidth(),lBlock.getHeight()) && blockOrient(block) && block.getCenterX()<lBlock.getCenterX()){
+                                tBlock = block;
+                            }
+                        }
+                    }
+
+
+                    if(tBlock == null){
+                        for(int j=0;j<blocks.size();j++){
+                            block = blocks.get(j);
+                            btype = block.getType().toString();
+                            if(block.getCenterX()<lBlock.getCenterX() && blockOrient(block) && ((lBlock.getCenterX()-block.getCenterX()) < 25)){
+                                distPig = distance(new Point((int)block.getCenterX(),(int)(block.getCenterY()-block.getHeight()/2)), lBlock.getCenter());
+                                if(distPig<=min && block.getCenterY()>lBlock.getCenterY()){
+                                    min = distPig;
+                                    tBlock = block;
+                                }
+                                else if(tBlock==null && distPig<=min){
+                                    min = distPig;
+                                    tBlock = block;
+                                }
+                            }
+                        }
+                    }
+
+                    //If tBlock is null, Pig is surrounded by nothing, Shoot the pig
+                    if(tBlock == null){
+                        targetBlock = resBlock;
+                    }
+                    else{
+                        targetBlock = tBlock;
+                    }
+                    if(resStone !=null){
+                        targetBlock = resStone;
+                    }
+
+                    //System.out.println(min+" Block number: "+tempResBlock.id +" Block Type: "+tempResBlock.getType().toString());
+                    //resBlock = tempResBlock;
+
                     int xres,yres;
-                    xres = (int)resBlock.getCenterX();
-                    yres = (int) (resBlock.getCenterY() - (3 * resBlock.getHeight())/10);
-                    Point resP = new Point(xres,yres);
+                    xres = (int)targetBlock.getCenterX();
+                    yres = (int) (targetBlock.getCenterY() - (3 * targetBlock.getHeight())/10);
+                    resP = new Point(xres,yres);
+
                     //System.out.println(resP.toString());
 
                     Point _tpt = resP;// if the target is very close to before, randomly choose a
                     // point near it
                     //if (prevTarget != null && distance(prevTarget, _tpt) < 10) {
-                    //	double _angle = randomGenerator.nextDouble() * Math.PI * 2;
-                    //	_tpt.x = _tpt.x + (int) (Math.cos(_angle) * 10);
-                    //	_tpt.y = _tpt.y + (int) (Math.sin(_angle) * 10);
-                    //	System.out.println("Randomly changing to " + _tpt);
+                    //  double _angle = randomGenerator.nextDouble() * Math.PI * 2;
+                    //  _tpt.x = _tpt.x + (int) (Math.cos(_angle) * 10);
+                    //  _tpt.y = _tpt.y + (int) (Math.sin(_angle) * 10);
+                    //  System.out.println("Randomly changing to " + _tpt);
                     //}
 
                     prevTarget = new Point(_tpt.x, _tpt.y);
@@ -268,13 +394,13 @@ public class NaiveAgent implements Runnable {
                             case RedBird:
                                 tapInterval = 0; break;               // start of trajectory
                             case YellowBird:
-                                tapInterval = 65 + randomGenerator.nextInt(25);break; // 65-90% of the way
+                                tapInterval = 75 + randomGenerator.nextInt(15);break; // 75-90% of the way
                             case WhiteBird:
-                                tapInterval =  70 + randomGenerator.nextInt(20);break; // 70-90% of the way
+                                tapInterval =  80 + randomGenerator.nextInt(10);break; // 80-90% of the way
                             case BlackBird:
-                                tapInterval =  70 + randomGenerator.nextInt(20);break; // 70-90% of the way
+                                tapInterval =  80 + randomGenerator.nextInt(10);break; // 80-90% of the way
                             case BlueBird:
-                                tapInterval =  65 + randomGenerator.nextInt(20);break; // 65-85% of the way
+                                tapInterval =  75 + randomGenerator.nextInt(10);break; // 75-85% of the way
                             default:
                                 tapInterval =  60;
                         }
@@ -329,12 +455,12 @@ public class NaiveAgent implements Runnable {
         return state;
     }
 
-	public static void main(String args[]) {
+    public static void main(String args[]) {
 
-		NaiveAgent na = new NaiveAgent();
-		if (args.length > 0)
-			na.currentLevel = Integer.parseInt(args[0]);
-		na.run();
+        NaiveAgent na = new NaiveAgent();
+        if (args.length > 0)
+            na.currentLevel = Integer.parseInt(args[0]);
+        na.run();
 
-	}
+    }
 }

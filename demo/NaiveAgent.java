@@ -3,9 +3,8 @@
  ** Copyright (c) 2014, XiaoYu (Gary) Ge, Stephen Gould, Jochen Renz
  **  Sahan Abeyasinghe,Jim Keys,  Andrew Wang, Peng Zhang
  ** All rights reserved.
- **This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License. 
- **To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/3.0/ 
- *or send a letter to Creative Commons, 444 Castro Street, Suite 900, Mountain View, California, 94041, USA.
+**This work is licensed under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+**To view a copy of this license, visit http://www.gnu.org/licenses/
  *****************************************************************************/
 package ab.demo;
 
@@ -36,6 +35,10 @@ public class NaiveAgent implements Runnable {
     TrajectoryPlanner tp;
     private boolean firstShot;
     private Point prevTarget;
+
+    private Heuristic heuristic;
+
+
     // a standalone implementation of the Naive Agent
     public NaiveAgent() {
         
@@ -86,6 +89,7 @@ public class NaiveAgent implements Runnable {
                 firstShot = true;
             } else if (state == GameState.LOST) {
                 System.out.println("Restart");
+
                 aRobot.restartLevel();
             } else if (state == GameState.LEVEL_SELECTION) {
                 System.out
@@ -115,6 +119,7 @@ public class NaiveAgent implements Runnable {
                 .sqrt((double) ((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y)
                         * (p1.y - p2.y)));
     }
+
     private List<String> blocksDescription(Vision vision){
         List<String> desc = new ArrayList<String>();
         String res="";
@@ -132,13 +137,7 @@ public class NaiveAgent implements Runnable {
         return desc;
     }
 
-    public boolean blockOrient(ABObject b)
-    {
-        if(b.getHeight()>b.getWidth())
-            return true;
-        else
-            return false;
-    }
+
 
     public GameState solve()
     {
@@ -154,8 +153,7 @@ public class NaiveAgent implements Runnable {
 
         // confirm the slingshot
         while (sling == null && aRobot.getState() == GameState.PLAYING) {
-            System.out
-                    .println("No slingshot detected. Please remove pop up or zoom out");
+            System.out.println("No slingshot detected. Please remove pop up or zoom out");
             ActionRobot.fullyZoomOut();
             screenshot = ActionRobot.doScreenShot();
             vision = new Vision(screenshot);
@@ -164,8 +162,6 @@ public class NaiveAgent implements Runnable {
         // get all the pigs
         List<ABObject> pigs = vision.findPigsMBR();
 
-        //blocksDescription(vision);
-
         GameState state = aRobot.getState();
 
         // if there is a sling, then play, otherwise just skip.
@@ -173,19 +169,48 @@ public class NaiveAgent implements Runnable {
 
             if (!pigs.isEmpty()) {
 
+                heuristic = new Heuristic(vision,tp);
+
                 Point releasePoint = null;
                 Shot shot = new Shot();
-                Point resP = null;
                 int dx,dy;
+                Point refPoint = tp.getReferencePoint(sling);
                 {
+
+                /*
+
+
+                Point resP = null;
+
+
                     // random pick up a pig
-                    Point refPoint = tp.getReferencePoint(sling);
+
 
                     //blocksDescription(vision);
 
                     List<ABObject> blocks = vision.findBlocksRealShape();
                     ABObject resBlock=null,targetBlock = null,resStone=null;
+                    Boolean pigToRight=false;
 
+                    //System.out.println("Counter: "+counter);
+                    String blockTypeReq=null,btype=null;
+
+                    switch (aRobot.getBirdTypeOnSling())
+                    {
+                        case RedBird:
+                            blockTypeReq="Stone"; break;               // start of trajectory
+                        case YellowBird:
+                            blockTypeReq="Wood";break; // 75-90% of the way
+                        case WhiteBird:
+                            blockTypeReq="Stone";break; // 80-90% of the way
+                        case BlackBird:
+                            blockTypeReq="Stone";break; // 80-90% of the way
+                        case BlueBird:
+                            blockTypeReq="Ice";break; // 75-85% of the way
+                        default:
+                            blockTypeReq="Stone";
+
+                    }
 
                     for(int i=0;i<blocks.size();i++){
                         if(blocks.get(i).shape.toString() == "Circle" && blocks.get(i).getType().toString()=="Stone"){
@@ -194,21 +219,37 @@ public class NaiveAgent implements Runnable {
                             break;
                         }
                     }
+                    if(resStone!=null){
+                    pigToRight=false;
+                    ABObject tempPig=null;
+                    for(int i=0;i<pigs.size();i++){
+                        tempPig = pigs.get(i);
+                        if(tempPig.getCenterX()>resStone.getCenterX()){
+                            pigToRight=true;
+                            break;
+                        }
+                    }
+                    }
 
-                    if(resBlock==null){
+                    //System.out.println("Pig to right:"+pigToRight);
+
+                    if(!pigToRight){
                         ABObject resPig=pigs.get(0),pig = pigs.get(0);
                         double maxDistance = 25;
                         ABObject block=null;
                         List<Integer> heuristic = new ArrayList();
                         int resH;
+                        ABObject mpig=null;
                         for(int i=0;i<pigs.size();i++){
                             resH = 0;
-                            ABObject mpig=null;
+                            mpig=null;
                             pig = pigs.get(i);
-                            blocks = vision.findBlocksRealShape();
+                            //blocks = vision.findBlocksRealShape();
                             for(int j=0;j<blocks.size();j++){
                                 block = blocks.get(j);
-                                if(distance(block.getCenter(),pig.getCenter())<=maxDistance && block.getCenterX()<=pig.getCenterX()&&(block.getType().toString()=="Wood" || block.getType().toString() == "Ice")){
+                                btype = block.getType().toString();
+
+                                if(distance(block.getCenter(),pig.getCenter())<=maxDistance && block.getCenterX()<=pig.getCenterX()&& btype.equals(blockTypeReq)){
                                     resH +=1;
                                 }
                             }
@@ -237,11 +278,10 @@ public class NaiveAgent implements Runnable {
                     }
 
 
-                    blocks = vision.findBlocksRealShape();
+                    //blocks = vision.findBlocksRealShape();
                     ABObject block=null;
 
                     double distPig,tempd;
-                    String btype;
                     ABObject tempResBlock = resBlock;
 
                     double min = 9999999;
@@ -263,14 +303,14 @@ public class NaiveAgent implements Runnable {
                     //System.out.println("Distance: "+distance(lBlock.getCenter(),resBlock.getCenter()));
 
 
-
                     ABObject tBlock=null;
                     if(lBlock == null){
                         //Special Assignment of tBlock based on distance
                         for(int j=0;j<blocks.size();j++){
                             block = blocks.get(j);
                             btype = block.getType().toString();
-                            if(block.getCenterX()<resBlock.getCenterX()){
+
+                            if(block.getCenterX()<resBlock.getCenterX() && btype.equals(blockTypeReq)){
                                 distPig = distance(block.getCenter(), resBlock.getCenter());
                                 if(distPig<=min){
                                     min = distPig;
@@ -285,29 +325,33 @@ public class NaiveAgent implements Runnable {
                     else{
                         for(int j=0;j<blocks.size();j++){
                             block=blocks.get(j);
-                            if(block.intersects(lBlock.getCenterX(),lBlock.getCenterY(),lBlock.getWidth(),lBlock.getHeight()) && blockOrient(block)&& block.getCenterX()<lBlock.getCenterX() &&block.getCenterY()>lBlock.getCenterY()){
+                            btype = block.getType().toString();
+                            if(block.intersects(lBlock.getCenterX(),lBlock.getCenterY(),lBlock.getWidth(),lBlock.getHeight()) && blockOrient(block)&& block.getCenterX()<lBlock.getCenterX() &&block.getCenterY()>lBlock.getCenterY()&&btype.equals(blockTypeReq)){
                                 tBlock = block;
                             }
-                            else if (tBlock==null && block.intersects(lBlock.getCenterX(),lBlock.getCenterY(),lBlock.getWidth(),lBlock.getHeight()) && blockOrient(block) && block.getCenterX()<lBlock.getCenterX()){
+                            else if (tBlock==null && block.intersects(lBlock.getCenterX(),lBlock.getCenterY(),lBlock.getWidth(),lBlock.getHeight()) && blockOrient(block) && block.getCenterX()<lBlock.getCenterX() && btype.equals(blockTypeReq)){
                                 tBlock = block;
                             }
                         }
-                    }
 
-
-                    if(tBlock == null){
-                        for(int j=0;j<blocks.size();j++){
-                            block = blocks.get(j);
-                            btype = block.getType().toString();
-                            if(block.getCenterX()<lBlock.getCenterX() && blockOrient(block) && ((lBlock.getCenterX()-block.getCenterX()) < 25)){
-                                distPig = distance(new Point((int)block.getCenterX(),(int)(block.getCenterY()-block.getHeight()/2)), lBlock.getCenter());
-                                if(distPig<=min){
-                                    min = distPig;
-                                    tBlock = block;
+                        if(tBlock == null){
+                            for(int j=0;j<blocks.size();j++){
+                                block = blocks.get(j);
+                                btype = block.getType().toString();
+                                if(block.getCenterX()<lBlock.getCenterX() && blockOrient(block) && ((lBlock.getCenterX()-block.getCenterX()) < 25) && btype.equals(blockTypeReq)){
+                                    distPig = distance(new Point((int)block.getCenterX(),(int)(block.getCenterY()-block.getHeight()/2)), lBlock.getCenter());
+                                    if(distPig<=min){
+                                        min = distPig;
+                                        tBlock = block;
+                                    }
                                 }
                             }
                         }
+
                     }
+
+
+
 
                     //If tBlock is null, Pig is surrounded by nothing, Shoot the pig
                     if(tBlock == null){
@@ -316,7 +360,8 @@ public class NaiveAgent implements Runnable {
                     else{
                         targetBlock = tBlock;
                     }
-                    if(resStone !=null){
+                    if(resStone !=null && pigToRight){
+                        System.out.println("Here");
                         targetBlock = resStone;
                     }
 
@@ -329,8 +374,9 @@ public class NaiveAgent implements Runnable {
                     resP = new Point(xres,yres);
 
                     //System.out.println(resP.toString());
+                    */
 
-                    Point _tpt = resP;// if the target is very close to before, randomly choose a
+                    Point _tpt = heuristic.solve();// if the target is very close to before, randomly choose a
                     // point near it
                     //if (prevTarget != null && distance(prevTarget, _tpt) < 10) {
                     //  double _angle = randomGenerator.nextDouble() * Math.PI * 2;
@@ -342,10 +388,40 @@ public class NaiveAgent implements Runnable {
                     prevTarget = new Point(_tpt.x, _tpt.y);
 
                     // estimate the trajectory
-                    ArrayList<Point> pts = tp.estimateLaunchPoint_1(sling, _tpt);
 
+                    ArrayList<Point> pts = tp.estimateLaunchPoint_1(sling, _tpt);
+                    ArrayList<Point> pts1=null;
+                    if(heuristic.targetIsPig && !pts.contains(_tpt)){
+                        pts1 = tp.estimateLaunchPoint(sling,_tpt);
+                        if(pts1.contains(_tpt))
+                            pts=pts1;
+                    }
+
+
+
+                /*Point releasePoint = null;
+                Shot shot = new Shot();
+                int dx,dy;
+                {
+                    // random pick up a pig
+                    ABObject pig = pigs.get(randomGenerator.nextInt(pigs.size()));
+                    
+                    Point _tpt = pig.getCenter();// if the target is very close to before, randomly choose a
+                    // point near it
+                    if (prevTarget != null && distance(prevTarget, _tpt) < 10) {
+                        double _angle = randomGenerator.nextDouble() * Math.PI * 2;
+                        _tpt.x = _tpt.x + (int) (Math.cos(_angle) * 10);
+                        _tpt.y = _tpt.y + (int) (Math.sin(_angle) * 10);
+                        System.out.println("Randomly changing to " + _tpt);
+                    }
+
+                    prevTarget = new Point(_tpt.x, _tpt.y);
+
+                    // estimate the trajectory
+                    ArrayList<Point> pts = tp.estimateLaunchPoint_1(sling, _tpt);*/
+                    
                     // do a high shot when entering a level to find an accurate velocity
-                    if (firstShot && pts.size() > 1)
+                    if (firstShot && pts.size() > 1) 
                     {
                         releasePoint = pts.get(1);
                     }
@@ -361,18 +437,18 @@ public class NaiveAgent implements Runnable {
                             releasePoint = pts.get(0);
                     }
                     else
-                    if(pts.isEmpty())
-                    {
-                        System.out.println("No release point found for the target");
-                        System.out.println("Try a shot with 45 degree");
-                        releasePoint = tp.findReleasePoint(sling, Math.PI/4);
-                    }
-
+                        if(pts.isEmpty())
+                        {
+                            System.out.println("No release point found for the target");
+                            System.out.println("Try a shot with 45 degree");
+                            releasePoint = tp.findReleasePoint(sling, Math.PI/4);
+                        }
+                    
                     // Get the reference point
+                    //Point refPoint = tp.getReferencePoint(sling);
 
 
-
-                    //Calculate the tapping time according the bird type
+                    //Calculate the tapping time according the bird type 
                     if (releasePoint != null) {
                         double releaseAngle = tp.getReleaseAngle(sling,
                                 releasePoint);
@@ -380,9 +456,8 @@ public class NaiveAgent implements Runnable {
                         System.out.println("Release Angle: "
                                 + Math.toDegrees(releaseAngle));
                         int tapInterval = 0;
-                        switch (aRobot.getBirdTypeOnSling())
+                        switch (aRobot.getBirdTypeOnSling()) 
                         {
-
                             case RedBird:
                                 tapInterval = 0; break;               // start of trajectory
                             case YellowBird:
@@ -392,9 +467,22 @@ public class NaiveAgent implements Runnable {
                             case BlackBird:
                                 tapInterval =  80 + randomGenerator.nextInt(10);break; // 80-90% of the way
                             case BlueBird:
-                                tapInterval =  75 + randomGenerator.nextInt(10);break; // 75-85% of the way
+                                tapInterval =  65 + randomGenerator.nextInt(20);break; // 75-85% of the way
                             default:
                                 tapInterval =  60;
+
+                        /*case RedBird:
+                            tapInterval = 0; break;               // start of trajectory
+                        case YellowBird:
+                            tapInterval = 65 + randomGenerator.nextInt(25);break; // 65-90% of the way
+                        case WhiteBird:
+                            tapInterval =  70 + randomGenerator.nextInt(20);break; // 70-90% of the way
+                        case BlackBird:
+                            tapInterval =  70 + randomGenerator.nextInt(20);break; // 70-90% of the way
+                        case BlueBird:
+                            tapInterval =  65 + randomGenerator.nextInt(20);break; // 65-85% of the way
+                        default:
+                            tapInterval =  60;*/
                         }
 
                         int tapTime = tp.getTapTime(sling, releasePoint, _tpt, tapInterval);
@@ -403,10 +491,10 @@ public class NaiveAgent implements Runnable {
                         shot = new Shot(refPoint.x, refPoint.y, dx, dy, 0, tapTime);
                     }
                     else
-                    {
-                        System.err.println("No Release Point Found");
-                        return state;
-                    }
+                        {
+                            System.err.println("No Release Point Found");
+                            return state;
+                        }
                 }
 
                 // check whether the slingshot is changed. the change of the slingshot indicates a change in the scale.
@@ -451,7 +539,7 @@ public class NaiveAgent implements Runnable {
 
         NaiveAgent na = new NaiveAgent();
         if (args.length > 0)
-            na.currentLevel = Integer.parseInt(args[0]);
+            na.currentLevel = Integer.parseInt(args[1]);
         na.run();
 
     }

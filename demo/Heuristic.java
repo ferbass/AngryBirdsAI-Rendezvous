@@ -1,5 +1,6 @@
 package ab.demo;
 
+import ab.demo.other.ActionRobot;
 import ab.planner.TrajectoryPlanner;
 import ab.vision.ABObject;
 import ab.vision.Vision;
@@ -16,20 +17,22 @@ public class Heuristic {
 
     private Vision vision;
 
+    private int counterGames;
     TrajectoryPlanner tp;
-    private List<Integer> heuristic = new ArrayList();
+    private List<Double> heuristic = new ArrayList();
     public Boolean targetIsPig=false;
+    private ActionRobot aRobot;
 
-    public Heuristic(Vision vision, TrajectoryPlanner tp){
+    public Heuristic(Vision vision, TrajectoryPlanner tp, ActionRobot aRobot,int counterGames){
         this.vision=vision;
         this.tp=tp;
         targetIsPig=false;
+        this.aRobot=aRobot;
+        this.counterGames=counterGames;
     }
 
     public Point solve(){
         List<ABObject> pigs = vision.findPigsMBR();
-        if(pigs.isEmpty())
-            System.out.print("Whoa");
         Rectangle sling = vision.findSlingshotMBR();
         Point refPoint = tp.getReferencePoint(sling);
         List<ABObject> blocks = vision.findBlocksRealShape();
@@ -57,6 +60,9 @@ public class Heuristic {
         }
         else{
             tBlock = getTargetBlock1(resPig,blocks);
+        }
+        if(tBlock==null && lBlock!=null){
+            tBlock = getTargetBlockTrivial(lBlock, blocks);
         }
 
         if(tBlock == null){
@@ -98,7 +104,7 @@ public class Heuristic {
         ABObject pig=null;
         for(int i=0;i<pigs.size();i++){
             pig = pigs.get(i);
-            if(pig.getCenterX()>resStone.getCenterX() && pig.getCenterY()>=resStone.getCenterY()+5){
+            if((pig.getCenterX()+5)>resStone.getCenterX() && pig.getCenterY()>=resStone.getCenterY()+5){
                 return resStone;
             }
             else{
@@ -124,7 +130,7 @@ public class Heuristic {
             }
 
             else if(heuristic.get(i)==hmax){
-                if(pigs.get(hindex).getCenterX()>pigs.get(i).getCenterX())
+                if(pigs.get(hindex).getCenterX()<pigs.get(i).getCenterX())
                     hindex=i;
             }
         }
@@ -152,8 +158,6 @@ public class Heuristic {
 
     public ABObject getTargetBlock(ABObject lBlock,List<ABObject> blocks){
         ABObject tBlock=null,block=null;
-        String btype=null;
-        double distFromPig,min=9999999;
 
         //Find the block that touches lBlock and lies in left and is below lBlock ==> tBlock
 
@@ -166,20 +170,7 @@ public class Heuristic {
                 tBlock = block;
             }
         }
-
-        if(tBlock==null){
-            for(int j=0;j<blocks.size();j++){
-                block = blocks.get(j);
-                btype = block.getType().toString();
-                if(block.getCenterX()<lBlock.getCenterX() && blockOrient(block) && ((lBlock.getCenterX()-block.getCenterX()) < 25)){
-                    distFromPig = distance(new Point((int)block.getCenterX(),(int)(block.getCenterY()-block.getHeight()/2)), lBlock.getCenter());
-                    if(distFromPig<=min){
-                        min = distFromPig;
-                        tBlock = block;
-                    }
-                }
-            }
-        }
+        //System.out.println(tBlock.getCenter().toString()+"Orient:"+blockOrient(tBlock));
         return tBlock;
     }
 
@@ -191,7 +182,7 @@ public class Heuristic {
         for(int j=0;j<blocks.size();j++){
             block = blocks.get(j);
             btype = block.getType().toString();
-            if(block.getCenterX()<resBlock.getCenterX()){
+            if(block.getCenterX()<resBlock.getCenterX() && blockOrient(block)){
                 distFromPig = distance(block.getCenter(), resBlock.getCenter());
                 if(distFromPig<=min){
                     min = distFromPig;
@@ -202,12 +193,29 @@ public class Heuristic {
         return tBlock;
     }
 
+    public ABObject getTargetBlockTrivial(ABObject lBlock,List<ABObject> blocks){
+        ABObject tBlock=null,block=null;
+        String btype=null;
+        double distFromPig,min=9999999;
+        for(int j=0;j<blocks.size();j++){
+            block = blocks.get(j);
+            btype = block.getType().toString();
+            if(block.getCenterX()<lBlock.getCenterX() && blockOrient(block) && ((lBlock.getCenterX()-block.getCenterX()) < 25)){
+                distFromPig = distance(new Point((int)block.getCenterX(),(int)(block.getCenterY()-block.getHeight()/2)), lBlock.getCenter());
+                if(distFromPig<=min){
+                    min = distFromPig;
+                    tBlock = block;
+                }
+            }
+        }
+        return tBlock;
+    }
 
     public void generateHeuristic(List<ABObject> pigs,List<ABObject> blocks){
         ABObject pig = pigs.get(0),mpig=null;
         double maxDistance = 25;
         ABObject block=null;
-        int hValue;
+        double hValue;
 
         for(int i=0;i<pigs.size();i++){
             hValue = 0;
@@ -227,14 +235,24 @@ public class Heuristic {
                     hValue += 5;
                 }
             }
+            hValue=hValue + (((1000-pig.getCenterY())/1000)*10);
+
             heuristic.add(hValue);
         }
+
     }
 
     public boolean blockOrient(ABObject b)
     {
-        if(b.getHeight()>b.getWidth())
-            return true;
+        if((b.getMaxY()-b.getMinY())>(b.getMaxX()-b.getMinX())){
+            if(counterGames<=1)
+                return true;
+            else{
+                if (b.type.toString().equals("Wood") || b.type.toString().equals("Wood"))
+                    return true;
+                else return false;
+            }
+        }
         else
             return false;
     }

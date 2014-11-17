@@ -34,6 +34,7 @@ public class NaiveAgent implements Runnable {
     private Map<Integer,Integer> scores = new LinkedHashMap<Integer,Integer>();
     TrajectoryPlanner tp;
     private boolean firstShot;
+    private int counterGames=0;
     private Point prevTarget;
 
     private Heuristic heuristic;
@@ -55,11 +56,12 @@ public class NaiveAgent implements Runnable {
     
     // run the client
     public void run() {
-
         aRobot.loadLevel(currentLevel);
         while (true) {
+
             GameState state = solve();
             if (state == GameState.WON) {
+                counterGames=0;
                 try {
                     Thread.sleep(3000);
                 } catch (InterruptedException e) {
@@ -89,8 +91,11 @@ public class NaiveAgent implements Runnable {
                 firstShot = true;
             } else if (state == GameState.LOST) {
                 System.out.println("Restart");
-
-                aRobot.restartLevel();
+                counterGames++;
+                if(counterGames==3)
+                    aRobot.loadLevel(++currentLevel);
+                else
+                    aRobot.restartLevel();
             } else if (state == GameState.LEVEL_SELECTION) {
                 System.out
                 .println("Unexpected level selection page, go to the last current level : "
@@ -169,213 +174,13 @@ public class NaiveAgent implements Runnable {
 
             if (!pigs.isEmpty()) {
 
-                heuristic = new Heuristic(vision,tp);
+                heuristic = new Heuristic(vision,tp,aRobot,counterGames);
 
                 Point releasePoint = null;
                 Shot shot = new Shot();
                 int dx,dy;
                 Point refPoint = tp.getReferencePoint(sling);
                 {
-
-                /*
-
-
-                Point resP = null;
-
-
-                    // random pick up a pig
-
-
-                    //blocksDescription(vision);
-
-                    List<ABObject> blocks = vision.findBlocksRealShape();
-                    ABObject resBlock=null,targetBlock = null,resStone=null;
-                    Boolean pigToRight=false;
-
-                    //System.out.println("Counter: "+counter);
-                    String blockTypeReq=null,btype=null;
-
-                    switch (aRobot.getBirdTypeOnSling())
-                    {
-                        case RedBird:
-                            blockTypeReq="Stone"; break;               // start of trajectory
-                        case YellowBird:
-                            blockTypeReq="Wood";break; // 75-90% of the way
-                        case WhiteBird:
-                            blockTypeReq="Stone";break; // 80-90% of the way
-                        case BlackBird:
-                            blockTypeReq="Stone";break; // 80-90% of the way
-                        case BlueBird:
-                            blockTypeReq="Ice";break; // 75-85% of the way
-                        default:
-                            blockTypeReq="Stone";
-
-                    }
-
-                    for(int i=0;i<blocks.size();i++){
-                        if(blocks.get(i).shape.toString() == "Circle" && blocks.get(i).getType().toString()=="Stone"){
-                            resStone = blocks.get(i);
-                            resBlock = blocks.get(i);
-                            break;
-                        }
-                    }
-                    if(resStone!=null){
-                    pigToRight=false;
-                    ABObject tempPig=null;
-                    for(int i=0;i<pigs.size();i++){
-                        tempPig = pigs.get(i);
-                        if(tempPig.getCenterX()>resStone.getCenterX()){
-                            pigToRight=true;
-                            break;
-                        }
-                    }
-                    }
-
-                    //System.out.println("Pig to right:"+pigToRight);
-
-                    if(!pigToRight){
-                        ABObject resPig=pigs.get(0),pig = pigs.get(0);
-                        double maxDistance = 25;
-                        ABObject block=null;
-                        List<Integer> heuristic = new ArrayList();
-                        int resH;
-                        ABObject mpig=null;
-                        for(int i=0;i<pigs.size();i++){
-                            resH = 0;
-                            mpig=null;
-                            pig = pigs.get(i);
-                            //blocks = vision.findBlocksRealShape();
-                            for(int j=0;j<blocks.size();j++){
-                                block = blocks.get(j);
-                                btype = block.getType().toString();
-
-                                if(distance(block.getCenter(),pig.getCenter())<=maxDistance && block.getCenterX()<=pig.getCenterX()&& btype.equals(blockTypeReq)){
-                                    resH +=1;
-                                }
-                            }
-
-                            for(int j=0;j<pigs.size();j++){
-                                mpig = pigs.get(j);
-                                if(distance(mpig.getCenter(),pig.getCenter())<maxDistance && i!=j){
-                                    resH += 5;
-                                }
-                            }
-                            heuristic.add(resH);
-                        }
-                        double hmax=-1;
-                        int hindex=0;
-                        for(int i=0;i<heuristic.size();i++){
-                            if(heuristic.get(i)>hmax){
-                                hindex = i;
-                                hmax = heuristic.get(i);
-                            }
-                            else if(heuristic.get(i)==hmax){
-                                if(pigs.get(hindex).getCenterX()>pigs.get(i).getCenterX())
-                                    hindex=i;
-                            }
-                        }
-                        resBlock = pigs.get(hindex);
-                    }
-
-
-                    //blocks = vision.findBlocksRealShape();
-                    ABObject block=null;
-
-                    double distPig,tempd;
-                    ABObject tempResBlock = resBlock;
-
-                    double min = 9999999;
-
-                    //Finding the block on which resBlock lies = lBlock
-                    ABObject lBlock=null;
-                    for(int j=0;j<blocks.size();j++){
-                        block=blocks.get(j);
-                        if(block.intersects(resBlock.getCenterX(),resBlock.getCenterY(),resBlock.getWidth(),resBlock.getHeight()) && block.getCenterY()>resBlock.getCenterY()){
-                            if(lBlock==null)
-                                lBlock = block;
-                            else{
-                                if(block.getCenterX()<(lBlock.getCenterX()+lBlock.getWidth()/2))
-                                    lBlock = block;
-                            }
-                        }
-                    }
-
-                    //System.out.println("Distance: "+distance(lBlock.getCenter(),resBlock.getCenter()));
-
-
-                    ABObject tBlock=null;
-                    if(lBlock == null){
-                        //Special Assignment of tBlock based on distance
-                        for(int j=0;j<blocks.size();j++){
-                            block = blocks.get(j);
-                            btype = block.getType().toString();
-
-                            if(block.getCenterX()<resBlock.getCenterX() && btype.equals(blockTypeReq)){
-                                distPig = distance(block.getCenter(), resBlock.getCenter());
-                                if(distPig<=min){
-                                    min = distPig;
-                                    tBlock = block;
-                                }
-                            }
-                        }
-                    }
-
-                    //Find the block that touches lBlock and lies in left and is below lBlock ==> tBlock
-
-                    else{
-                        for(int j=0;j<blocks.size();j++){
-                            block=blocks.get(j);
-                            btype = block.getType().toString();
-                            if(block.intersects(lBlock.getCenterX(),lBlock.getCenterY(),lBlock.getWidth(),lBlock.getHeight()) && blockOrient(block)&& block.getCenterX()<lBlock.getCenterX() &&block.getCenterY()>lBlock.getCenterY()&&btype.equals(blockTypeReq)){
-                                tBlock = block;
-                            }
-                            else if (tBlock==null && block.intersects(lBlock.getCenterX(),lBlock.getCenterY(),lBlock.getWidth(),lBlock.getHeight()) && blockOrient(block) && block.getCenterX()<lBlock.getCenterX() && btype.equals(blockTypeReq)){
-                                tBlock = block;
-                            }
-                        }
-
-                        if(tBlock == null){
-                            for(int j=0;j<blocks.size();j++){
-                                block = blocks.get(j);
-                                btype = block.getType().toString();
-                                if(block.getCenterX()<lBlock.getCenterX() && blockOrient(block) && ((lBlock.getCenterX()-block.getCenterX()) < 25) && btype.equals(blockTypeReq)){
-                                    distPig = distance(new Point((int)block.getCenterX(),(int)(block.getCenterY()-block.getHeight()/2)), lBlock.getCenter());
-                                    if(distPig<=min){
-                                        min = distPig;
-                                        tBlock = block;
-                                    }
-                                }
-                            }
-                        }
-
-                    }
-
-
-
-
-                    //If tBlock is null, Pig is surrounded by nothing, Shoot the pig
-                    if(tBlock == null){
-                        targetBlock = resBlock;
-                    }
-                    else{
-                        targetBlock = tBlock;
-                    }
-                    if(resStone !=null && pigToRight){
-                        System.out.println("Here");
-                        targetBlock = resStone;
-                    }
-
-                    //System.out.println(min+" Block number: "+tempResBlock.id +" Block Type: "+tempResBlock.getType().toString());
-                    //resBlock = tempResBlock;
-
-                    int xres,yres;
-                    xres = (int)targetBlock.getCenterX();
-                    yres = (int) (targetBlock.getCenterY() - (3 * targetBlock.getHeight())/10);
-                    resP = new Point(xres,yres);
-
-                    //System.out.println(resP.toString());
-                    */
-
                     Point _tpt = heuristic.solve();// if the target is very close to before, randomly choose a
                     // point near it
                     //if (prevTarget != null && distance(prevTarget, _tpt) < 10) {
@@ -385,40 +190,21 @@ public class NaiveAgent implements Runnable {
                     //  System.out.println("Randomly changing to " + _tpt);
                     //}
 
-                    prevTarget = new Point(_tpt.x, _tpt.y);
-
-                    // estimate the trajectory
-
                     ArrayList<Point> pts = tp.estimateLaunchPoint_1(sling, _tpt);
                     ArrayList<Point> pts1=null;
+
+                    /*if(prevTarget!=null && (_tpt.x<=prevTarget.x+5 && _tpt.x>=prevTarget.x-5) && (_tpt.y<=prevTarget.y+5 && _tpt.y>=prevTarget.y-5) ){
+                        pts1 = tp.estimateLaunchPointMaximum(sling, _tpt);
+                        pts=pts1;
+                    }
+                    System.out.println("Target Point:"+_tpt.toString());*/
                     if(heuristic.targetIsPig && !pts.contains(_tpt)){
-                        pts1 = tp.estimateLaunchPoint(sling,_tpt);
+                        pts1 = tp.estimateLaunchPoint(sling, _tpt);
                         if(pts1.contains(_tpt))
                             pts=pts1;
-                    }
-
-
-
-                /*Point releasePoint = null;
-                Shot shot = new Shot();
-                int dx,dy;
-                {
-                    // random pick up a pig
-                    ABObject pig = pigs.get(randomGenerator.nextInt(pigs.size()));
-                    
-                    Point _tpt = pig.getCenter();// if the target is very close to before, randomly choose a
-                    // point near it
-                    if (prevTarget != null && distance(prevTarget, _tpt) < 10) {
-                        double _angle = randomGenerator.nextDouble() * Math.PI * 2;
-                        _tpt.x = _tpt.x + (int) (Math.cos(_angle) * 10);
-                        _tpt.y = _tpt.y + (int) (Math.sin(_angle) * 10);
-                        System.out.println("Randomly changing to " + _tpt);
-                    }
-
+                    } 
                     prevTarget = new Point(_tpt.x, _tpt.y);
 
-                    // estimate the trajectory
-                    ArrayList<Point> pts = tp.estimateLaunchPoint_1(sling, _tpt);*/
                     
                     // do a high shot when entering a level to find an accurate velocity
                     if (firstShot && pts.size() > 1) 
@@ -467,7 +253,7 @@ public class NaiveAgent implements Runnable {
                             case BlackBird:
                                 tapInterval =  80 + randomGenerator.nextInt(10);break; // 80-90% of the way
                             case BlueBird:
-                                tapInterval =  65 + randomGenerator.nextInt(20);break; // 75-85% of the way
+                                tapInterval =  70 + randomGenerator.nextInt(20);break; // 75-85% of the way
                             default:
                                 tapInterval =  60;
 

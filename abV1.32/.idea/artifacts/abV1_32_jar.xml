@@ -1,0 +1,13 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="abV1.32:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/abV1_32_jar</output-path>
+    <root id="archive" name="abV1.32.jar">
+      <element id="module-output" name="abV1.32" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/WebSocket.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/json-simple-1.1.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/Jama-1.0.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/commons-codec-1.7.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/jar-in-jar-loader.zip" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

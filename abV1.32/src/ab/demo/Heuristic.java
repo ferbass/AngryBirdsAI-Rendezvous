@@ -99,7 +99,7 @@ public class Heuristic {
                 maxArea=blocks.get(i).area;
             }
         }
-        if(resStone==null || counterGames>1)
+        if(resStone==null)
             return null;
         ABObject pig=null;
         for(int i=0;i<pigs.size();i++){

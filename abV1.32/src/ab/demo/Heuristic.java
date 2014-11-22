@@ -20,14 +20,15 @@ public class Heuristic {
     private int counterGames;
     TrajectoryPlanner tp;
     private List<Double> heuristic = new ArrayList();
+    public Boolean targetIsPig=false;
     private ActionRobot aRobot;
 
     public Heuristic(Vision vision, TrajectoryPlanner tp, ActionRobot aRobot,int counterGames){
         this.vision=vision;
         this.tp=tp;
+        targetIsPig=false;
         this.aRobot=aRobot;
         this.counterGames=counterGames;
-        //System.out.println("counter of Games==>"+counterGames);
     }
 
     public Point solve(){
@@ -40,75 +41,80 @@ public class Heuristic {
         Point targetPoint=null;
         int targetX,targetY;
 
-        ABObject resStone = getRoundStone(blocks,pigs); //Call method getRoundStone which return Round Stone if any.
-        if(resStone!=null){     //If round stone is available, make it the target
-            //System.out.println("1==>"+resStone.toString());
+        ABObject resStone = getRoundStone(blocks,pigs);
+        if(resStone!=null){
             targetBlock=resStone;
             targetX = (int)targetBlock.getCenterX();
-            targetY = (int) (targetBlock.getCenterY() - (3 * targetBlock.getHeight())/10);  //Hit at 4/5th height
+            targetY = (int) (targetBlock.getCenterY() - (3 * targetBlock.getHeight())/10);
             targetPoint = new Point(targetX,targetY);
-            return targetPoint;     //Return the target point.
+            return targetPoint;
         }
 
-        ABObject resPig = getTargetPig(pigs, blocks);       // Call getTargetPig method which return the pig with maximum heuristic value
-        ABObject lBlock = getLowerBlock(resPig,blocks);     //Find the block on which the pig resides, call it lblock
+        ABObject resPig = getTargetPig(pigs, blocks);
+        ABObject lBlock = getLowerBlock(resPig,blocks);
 
         ABObject tBlock=null;
 
-        if(lBlock!=null){                //If lblock is not null, call getTargetBlock which return a vertical block touching lBlock and to the Left-Below of lBlock
+        if(lBlock!=null){
             tBlock = getTargetBlock(lBlock,blocks);
         }
-        else{                           //If lblock is null, call getTargetBlock1 which return a vertical block to the left of pig and closest to the pig
+        else{
             tBlock = getTargetBlock1(resPig,blocks);
         }
-        if(tBlock==null && lBlock!=null){   //If tblock is still null, only 1 scenario remains and call getTargetBlockTrivial which return a vertical block to left-below of lBlock, closest to lBlock
+        if(tBlock==null && lBlock!=null){
             tBlock = getTargetBlockTrivial(lBlock, blocks);
         }
 
-        if(tBlock == null){     //If tblock is still null, it means pig is surrounded by nothing. Make pig the target.
+        if(tBlock == null){
             targetBlock = resPig;
+            targetIsPig=true;
         }
-        else{               //Else make tblock as the target
+        else{
             targetBlock = tBlock;
         }
 
 
 
         targetX = (int)targetBlock.getCenterX();
-        targetY = (int) (targetBlock.getCenterY() - (3 * targetBlock.getHeight())/10);  //Hit at the 4/5th height of the target
+        targetY = (int) (targetBlock.getCenterY() - (3 * targetBlock.getHeight())/10);
         targetPoint = new Point(targetX,targetY);
 
-        return targetPoint; //Return the target point.
+        return targetPoint;
 
     }
 
-    //Return a stone with circle shape with the check that there should be at least one pig which is to the right-below of the round stone.
     public ABObject getRoundStone(List<ABObject> blocks, List<ABObject> pigs){
         ABObject resStone=null;
-        int maxArea=-100;
+        int maxArea=0;
+
+        if(blocks.isEmpty())
+            return null;
+
         for(int i=0;i<blocks.size();i++){
-            if(blocks.get(i).shape.toString() == "Circle" && blocks.get(i).getType().toString()=="Stone"){
-                resStone = blocks.get(i);
-                break;
+            if(blocks.get(i).shape.toString() == "Circle" && blocks.get(i).getType().toString()=="Stone" && blocks.get(i).area>=maxArea){
+                if(blocks.get(i).area==maxArea && blocks.get(i).getCenterX()<resStone.getCenterX())
+                    resStone = blocks.get(i);
+                else if(blocks.get(i).area>maxArea)
+                    resStone = blocks.get(i);
+                maxArea=blocks.get(i).area;
             }
         }
-
-        ABObject pig;
         if(resStone==null)
             return null;
+        ABObject pig=null;
         for(int i=0;i<pigs.size();i++){
             pig = pigs.get(i);
             if((pig.getCenterX()+5)>resStone.getCenterX() && pig.getCenterY()>=resStone.getCenterY()+5){
                 return resStone;
             }
         }
-        return null;
+        blocks.remove(resStone);
+        return getRoundStone(blocks, pigs);
     }
 
-    //Returns the pig with maximum heuristic value
     public ABObject getTargetPig(List<ABObject> pigs,List<ABObject> blocks){
         ABObject resBlock=null;
-        generateHeuristic(pigs, blocks);    //Call generateHeuristic function to calculate heuristic value for each pig
+        generateHeuristic(pigs,blocks);
 
         double hmax=-1;
         int hindex=0;
@@ -120,47 +126,13 @@ public class Heuristic {
             }
 
             else if(heuristic.get(i)==hmax){
-                //System.out.println("Goes here for =>"+i + ":x Coordinates==>"+pigs.get(hindex).getCenterX()+","+pigs.get(i).getCenterX());
-                if(pigs.get(hindex).getCenterX()<pigs.get(i).getCenterX()) // If hvalue is same for 2 pigs, choose the one who is to the right
+                if(pigs.get(hindex).getCenterX()<pigs.get(i).getCenterX())
                     hindex=i;
             }
         }
         resBlock = pigs.get(hindex);
         return resBlock;
     }
-
-    //Generates heuristic value for each pig and stores it in ArrayList heuristic.
-    public void generateHeuristic(List<ABObject> pigs,List<ABObject> blocks){
-        ABObject pig,mpig=null;
-        double maxDistance = 25;
-        ABObject block=null;
-        double hValue;
-
-        for(int i=0;i<pigs.size();i++){
-            hValue = 0;
-            mpig=null;
-            pig = pigs.get(i);
-
-            for(int j=0;j<blocks.size();j++){
-                block = blocks.get(j);
-                if(distance(block.getCenter(),pig.getCenter())<=maxDistance && block.getCenterX()<=pig.getCenterX()&&(block.getType().toString()=="Wood" || block.getType().toString() == "Ice")){
-                    hValue +=1;
-                }
-            }
-
-            for(int j=0;j<pigs.size();j++){
-                mpig = pigs.get(j);
-                if(distance(mpig.getCenter(),pig.getCenter())<maxDistance && i!=j){
-                    hValue += 5;
-                }
-            }
-            hValue=hValue + (((1000-pig.getCenterY())/1000)*10);
-            //System.out.println("hvalue for:"+pig.toString() +"==>"+hValue);
-            heuristic.add(hValue);
-        }
-
-    }
-
 
     //Function to find the block on which the pig lies.
     public ABObject getLowerBlock(ABObject resBlock,List<ABObject> blocks){
@@ -179,7 +151,6 @@ public class Heuristic {
         }
         return lBlock;
     }
-
 
     public ABObject getTargetBlock(ABObject lBlock,List<ABObject> blocks){
         ABObject tBlock=null,block=null;
@@ -236,7 +207,37 @@ public class Heuristic {
         return tBlock;
     }
 
-    //Return the orientation of the block, true if vertical and false if horizontal.
+    public void generateHeuristic(List<ABObject> pigs,List<ABObject> blocks){
+        ABObject pig = pigs.get(0),mpig=null;
+        double maxDistance = 25;
+        ABObject block=null;
+        double hValue;
+
+        for(int i=0;i<pigs.size();i++){
+            hValue = 0;
+            mpig=null;
+            pig = pigs.get(i);
+
+            for(int j=0;j<blocks.size();j++){
+                block = blocks.get(j);
+                if(distance(block.getCenter(),pig.getCenter())<=maxDistance && block.getCenterX()<=pig.getCenterX()&&(block.getType().toString()=="Wood" || block.getType().toString() == "Ice")){
+                    hValue +=1;
+                }
+            }
+
+            for(int j=0;j<pigs.size();j++){
+                mpig = pigs.get(j);
+                if(distance(mpig.getCenter(),pig.getCenter())<maxDistance && i!=j){
+                    hValue += 5;
+                }
+            }
+            hValue=hValue + (((1000-pig.getCenterY())/1000)*10);
+
+            heuristic.add(hValue);
+        }
+
+    }
+
     public boolean blockOrient(ABObject b)
     {
         if((b.getMaxY()-b.getMinY())>(b.getMaxX()-b.getMinX())){
